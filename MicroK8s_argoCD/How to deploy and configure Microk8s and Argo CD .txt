@@ -1,0 +1,93 @@
+If you followed part 1 of this article, you may now have a virtual machine set up as a GitHub runner. In this example, I’m going to use the same VM to deploy Microk8s and Argo CD.
+
+I have already installed MySQL on this VM, as the application I plan to deploy in Microk8s requires database access.
+
+However, if you want to do this in a separate VM, you are most welcome to do so.
+
+Log into your virtual machine using its public IP address. Execute the following commands to install Microk8s.
+
+sudo snap install microk8s --classic
+microk8s enable dns 
+microk8s enable storage
+Now, make sure Microk8s is running on your VM.
+
+Press enter or click to view image in full size
+
+When you execute the following command, you can see Microk8s nodes.
+
+root@demo-vm:~# microk8s kubectl get nodes
+NAME      STATUS   ROLES    AGE   VERSION
+demo-vm   Ready    <none>   23d   v1.31.5
+This indicates that Microk8s is running successfully.
+
+Since it is somewhat inconvenient to always enter “microk8s kubectl” in the console, we will create an alias for that command.
+
+Add `alias k=’microk8s kubectl’ ` at the end of the ‘.bashrc’ file and run “source ~/.bashrc” to apply the changes immediately without restarting the terminal.
+
+2. Argo CD installation
+
+Get Yashash Theekshana’s stories in your inbox
+Join Medium for free to get updates from this writer.
+
+Enter your email
+Subscribe
+In the first part of this article, we completed the CI section of the pipeline. The next step is to configure the CD part. To do this, we need to install Argo CD on the Microk8s node.
+
+k create namespace argocd
+k apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+Let’s make sure Argo CD is running successfully.
+
+root@demo-vm:~# k get po -n argocd
+NAME                                                READY   STATUS    RESTARTS         AGE
+argocd-application-controller-0                     1/1     Running   8 (3h55m ago)    23d
+argocd-applicationset-controller-64f6bd6456-twvhp   1/1     Running   8 (3h55m ago)    23d
+argocd-dex-server-5fdcd9df8b-xpcb2                  1/1     Running   8 (3h55m ago)    23d
+argocd-notifications-controller-778495d96f-tf5fq    1/1     Running   8 (3h55m ago)    23d
+argocd-redis-69fd8bd669-jjtgw                       1/1     Running   8 (3h55m ago)    23d
+argocd-repo-server-75567c944-p8ztv                  1/1     Running   8 (3h55m ago)    23d
+argocd-server-5c768cdd96-77kpr                      1/1     Running   11 (3h55m ago)   23d
+Now, we need to change some configurations in Argo CD to enable access to the Argo CD server from outside the VM network.
+
+root@demo-vm:~# k get svc -n argocd
+NAME                                      TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+argocd-applicationset-controller          ClusterIP   10.152.183.231   <none>        7000/TCP,8080/TCP            23d
+argocd-dex-server                         ClusterIP   10.152.183.112   <none>        5556/TCP,5557/TCP,5558/TCP   23d
+argocd-metrics                            ClusterIP   10.152.183.227   <none>        8082/TCP                     23d
+argocd-notifications-controller-metrics   ClusterIP   10.152.183.232   <none>        9001/TCP                     23d
+argocd-redis                              ClusterIP   10.152.183.252   <none>        6379/TCP                     23d
+argocd-repo-server                        ClusterIP   10.152.183.106   <none>        8081/TCP,8084/TCP            23d
+argocd-server                             NodePort    10.152.183.96    <none>        80:30000/TCP,443:30001/TCP   23d
+argocd-server-metrics                     ClusterIP   10.152.183.180   <none>        8083/TCP                     23d
+Modify the “argocd-server” service type to NodePort.
+
+By default, the service type for “argocd-server” is ClusterIP.
+
+Run the following command, change the service type and save the changes.
+
+k edit svc argocd-server -o yaml -n argocd
+Add new node ports for HTTP and HTTPS protocols to enable access from outside, this can also be done using the command mentioned above. I used ports 30000 and 30001.
+
+ports:
+ - name: http
+ nodePort: 30000
+ port: 80
+ protocol: TCP
+ targetPort: 8080
+ - name: https
+ nodePort: 30001
+ port: 443
+ protocol: TCP
+ targetPort: 8080
+Please ensure that these ports are also allowed in the security groups of the VM. Now, you can access the Argo CD dashboard using VM’s public IP address and port.
+
+http://<VM-public-ip>:30000/
+
+Press enter or click to view image in full size
+
+Let’s deploy our docker image in Microk8s using Argo CD in part 3 of this article.
+
+Check out Part 3 for the next steps!
+
+
+
+https://askubuntu.com/questions/1436386/argocd-ingress-not-working-on-a-ubuntu-microk8s-cluster?__cf_chl_tk=kJa53kuVWYIqjMOfVdhjXi.PUeVis3ApuW9WZXuBPYM-1759491110-1.0.1.1-jPuTWUxxPpVgYaUZoC0vQZHKJ.VSnL0lGpoQKZlCiCo
