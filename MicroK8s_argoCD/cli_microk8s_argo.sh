@@ -21,6 +21,10 @@ microk8s kubectl port-forward -n kube-system service/kubernetes-dashboard 10443:
 https://microk8s.io/docs/addons#heading--list
 https://microk8s.io/docs/addon-dashboard
 
+# dajemy uprawnienia admina dla service account default w namespace kube-system ale to nie jest bezpieczne i nie powinno sie tak robic w produkcji ale to tylko jak na potrzeby testow i nauki
+microk8s kubectl create clusterrolebinding default-sa-admin --clusterrole=cluster-admin --serviceaccount=kube-system:default
+clusterrolebinding.rbac.authorization.k8s.io/default-sa-admin created
+
 
 snap list
 sudo snap install k9s
@@ -29,8 +33,9 @@ sudo ln -s /snap/k9s/current/bin/k9s /snap/bin/
 snap k9s
 
 
-
-kmicrok8s ubectl create namespace argocd
+# tu instalujemy ArgoCD na MicroK8s 
+ 
+microk8s kubectl create namespace argocd
 microk8s kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 microk8s kubectl port-forward svc/argocd-server -n argocd 8080:443
 argocd admin initial-password -n argocd
